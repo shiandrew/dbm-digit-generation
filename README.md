@@ -22,7 +22,7 @@ A PyTorch implementation of Deep Boltzmann Machines (DBM) for digit generation, 
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/dbm-digit-generation.git
+git clone https://github.com/shiandrew/dbm-digit-generation.git
 cd dbm-digit-generation
 ```
 
