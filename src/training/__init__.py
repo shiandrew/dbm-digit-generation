@@ -1,1 +1,7 @@
-# This file makes Python treat the directory as a package
+"""
+Training utilities and trainer classes.
+"""
+
+from .trainer import DBMTrainer
+
+__all__ = ['DBMTrainer']

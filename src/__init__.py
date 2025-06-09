@@ -1,1 +1,6 @@
-# This file makes Python treat the directory as a package
+"""
+Deep Boltzmann Machine implementation for digit generation.
+"""
+
+__version__ = "0.1.0"
+__author__ = "Andrew Shi"

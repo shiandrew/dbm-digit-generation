@@ -1,1 +1,7 @@
-# This file makes Python treat the directory as a package
+"""
+Sampling algorithms for DBM.
+"""
+
+from .gibbs_sampler import GibbsSampler
+
+__all__ = ['GibbsSampler']

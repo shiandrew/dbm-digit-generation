@@ -1,1 +1,3 @@
-# This file makes Python treat the directory as a package
+"""
+Test suite for DBM implementation.
+"""
