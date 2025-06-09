@@ -1,0 +1,98 @@
+# Improved DBM Configuration for Better Generation
+# Save as configs/improved.yaml
+
+# Model Architecture - Better for generation
+model:
+  type: "dbm"
+  hidden_dims: [300, 200]  # Smaller, more balanced layers
+  visible_dim: 784
+  use_cuda: true
+
+# Training Configuration - Optimized for generation
+training:
+  # Basic parameters
+  batch_size: 32  # Smaller batches for better gradients
+  learning_rate: 0.005  # Lower learning rate for stability
+  epochs: 300  # More epochs
+  early_stopping_patience: 50
+  
+  # Contrastive Divergence parameters
+  cd_steps: 3  # More CD steps for better gradients
+  persistent_cd: true  # Use persistent CD for better sampling
+  
+  # Learning rate scheduling
+  lr_schedule:
+    enabled: true
+    type: "step"
+    step_size: 75  # More frequent LR drops
+    gamma: 0.7
+  
+  # Regularization
+  weight_decay: 1e-4  # Stronger regularization
+  clip_grad_norm: 0.5  # Tighter gradient clipping
+
+# Pre-training Configuration - Enable this!
+pretraining:
+  enabled: true  # IMPORTANT: Layer-wise pretraining
+  epochs_per_layer: 100
+  learning_rate: 0.01
+  cd_steps: 1
+
+# Sampling Configuration
+sampling:
+  num_samples: 100
+  num_steps: 5000  # More steps for better quality
+  temperature: 0.8  # Lower temperature for more structured samples
+  burn_in_steps: 1000
+  sample_interval: 10
+  
+  # Annealing schedule
+  annealing:
+    enabled: true
+    temperature_schedule: [2.0, 1.5, 1.2, 1.0, 0.8]
+    steps_per_temp: 500
+
+# Data Configuration
+data:
+  dataset: "mnist"
+  train_val_split: 0.9
+  normalize: false
+  binarize: true
+  augmentation: false
+
+# Logging and Monitoring
+logging:
+  log_dir: "results/logs_improved"
+  save_dir: "models/checkpoints_improved"
+  tensorboard: true
+  log_interval: 25
+  save_interval: 10
+  
+  log_weights: true
+  log_gradients: true
+  log_samples: true
+  sample_log_interval: 200
+
+# Evaluation Configuration
+evaluation:
+  compute_likelihood: false
+  compute_free_energy: true
+  compute_reconstruction_error: true
+  
+  sample_quality:
+    enabled: true
+    num_samples: 500
+
+# Hardware Configuration
+hardware:
+  device: "cuda"
+  num_workers: 4
+  pin_memory: true
+  mixed_precision: false
+
+# Experiment Configuration
+experiment:
+  name: "dbm_mnist_improved_generation"
+  description: "DBM with better generation capabilities"
+  tags: ["dbm", "mnist", "improved", "generation"]
+  seed: 42

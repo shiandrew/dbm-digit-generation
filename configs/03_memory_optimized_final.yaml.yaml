@@ -1,0 +1,97 @@
+# Memory-Optimized DBM Configuration
+# Save as configs/memory_optimized.yaml
+
+# Model Architecture - Smaller for memory efficiency
+model:
+  type: "dbm"
+  hidden_dims: [256, 128]  # Smaller layers to reduce memory
+  visible_dim: 784
+  use_cuda: true
+
+# Training Configuration - Memory optimized
+training:
+  # Basic parameters - Reduced for memory
+  batch_size: 16  # Much smaller batch size
+  learning_rate: 0.005
+  epochs: 400  # More epochs to compensate for smaller batches
+  early_stopping_patience: 75
+  
+  # Contrastive Divergence parameters
+  cd_steps: 2  # Reduced from 3 to save memory
+  persistent_cd: false  # Disable to save memory
+  
+  # Learning rate scheduling
+  lr_schedule:
+    enabled: true
+    type: "step"
+    step_size: 100
+    gamma: 0.8
+  
+  # Regularization
+  weight_decay: 1e-4
+  clip_grad_norm: 0.5
+
+# Pre-training Configuration - Reduced
+pretraining:
+  enabled: true
+  epochs_per_layer: 75  # Reduced from 100
+  learning_rate: 0.008
+  cd_steps: 1
+
+# Sampling Configuration
+sampling:
+  num_samples: 64  # Reduced
+  num_steps: 3000  # Reduced but still decent
+  temperature: 0.8
+  burn_in_steps: 500
+  sample_interval: 10
+  
+  annealing:
+    enabled: true
+    temperature_schedule: [2.0, 1.5, 1.0, 0.8]
+    steps_per_temp: 300
+
+# Data Configuration
+data:
+  dataset: "mnist"
+  train_val_split: 0.9
+  normalize: false
+  binarize: true
+  augmentation: false
+
+# Logging and Monitoring - Reduced frequency
+logging:
+  log_dir: "results/logs_memory_opt"
+  save_dir: "models/checkpoints_memory_opt"
+  tensorboard: true
+  log_interval: 50  # Less frequent logging
+  save_interval: 20  # Less frequent saving
+  
+  log_weights: false  # Disable to save memory
+  log_gradients: false  # Disable to save memory
+  log_samples: true
+  sample_log_interval: 500
+
+# Evaluation Configuration
+evaluation:
+  compute_likelihood: false
+  compute_free_energy: true
+  compute_reconstruction_error: true
+  
+  sample_quality:
+    enabled: true
+    num_samples: 200
+
+# Hardware Configuration - Memory optimized
+hardware:
+  device: "cuda"
+  num_workers: 2  # Reduced
+  pin_memory: false  # Disable to save memory
+  mixed_precision: false
+
+# Experiment Configuration
+experiment:
+  name: "dbm_mnist_memory_optimized"
+  description: "Memory-optimized DBM for systems with limited GPU RAM"
+  tags: ["dbm", "mnist", "memory-optimized"]
+  seed: 42
