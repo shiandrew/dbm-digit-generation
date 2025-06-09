@@ -147,10 +147,15 @@ class DBM(nn.Module):
             current = visible
             for i in range(layer_idx + 1):
                 if i == 0:
+                    # First hidden layer from visible
                     pre_activation = F.linear(current, self.weights[i].t(), self.biases[i + 1])
                 else:
+                    # Subsequent hidden layers
                     pre_activation = F.linear(current, self.weights[i].t(), self.biases[i + 1])
-                current = torch.sigmoid(pre_activation)
+                
+                # If this is not the target layer, compute probabilities for next layer
+                if i < layer_idx:
+                    current = torch.sigmoid(pre_activation)
         
         probs = torch.sigmoid(pre_activation)
         samples = torch.bernoulli(probs)
@@ -229,14 +234,20 @@ class DBM(nn.Module):
         Returns:
             tuple: (negative_visible, negative_hiddens)
         """
-        # Initialize hidden units
+        # Initialize hidden units properly for multi-layer networks
         hiddens = []
         current_input = visible
         
         for i in range(self.num_layers):
-            _, hidden_samples = self.sample_hidden_given_visible(current_input, i)
-            hiddens.append(hidden_samples)
-            current_input = hidden_samples
+            if i == 0:
+                pre_activation = F.linear(current_input, self.weights[i].t(), self.biases[i + 1])
+            else:
+                pre_activation = F.linear(current_input, self.weights[i].t(), self.biases[i + 1])
+            
+            probs = torch.sigmoid(pre_activation)
+            samples = torch.bernoulli(probs)
+            hiddens.append(samples)
+            current_input = probs  # Use probabilities for next layer
         
         # Run k steps of Gibbs sampling
         neg_visible = visible.clone()
@@ -261,9 +272,17 @@ class DBM(nn.Module):
         current_input = visible
         
         for i in range(self.num_layers):
-            probs, _ = self.sample_hidden_given_visible(current_input, i)
+            # Each layer gets input from the layer below
+            if i == 0:
+                # First hidden layer from visible
+                pre_activation = F.linear(current_input, self.weights[i].t(), self.biases[i + 1])
+            else:
+                # Subsequent hidden layers from previous hidden layer
+                pre_activation = F.linear(current_input, self.weights[i].t(), self.biases[i + 1])
+            
+            probs = torch.sigmoid(pre_activation)
             hiddens.append(probs)
-            current_input = probs
+            current_input = probs  # Use probabilities for next layer
         
         return hiddens
     
