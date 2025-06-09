@@ -23,8 +23,8 @@ def test_new_model():
     
     print("=== Testing New Memory-Optimized Model ===")
     
-    # Load the new model
-    model_path = "models/checkpoints_memory_opt/best_model.pt"
+    # Load model
+    model_path = "models/02_improved_attempt_300x200/best_model.pt"
     
     if not os.path.exists(model_path):
         print(f"❌ Model not found at {model_path}")
@@ -169,9 +169,9 @@ def test_new_model():
     plt.tight_layout()
     
     # Save results
-    os.makedirs('results/new_model_test', exist_ok=True)
-    plt.savefig('results/new_model_test/generation_comparison.png', dpi=150, bbox_inches='tight')
-    print("✅ Saved results to results/new_model_test/generation_comparison.png")
+    os.makedirs('results/03_final_model_success', exist_ok=True)
+    plt.savefig('results/03_final_model_success/generation_comparison.png', dpi=150, bbox_inches='tight')
+    print("✅ Saved results to results/03_final_model_success/generation_comparison.png")
     
     plt.show()
     

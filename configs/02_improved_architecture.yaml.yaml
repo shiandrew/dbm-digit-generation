@@ -62,8 +62,8 @@ data:
 
 # Logging and Monitoring
 logging:
-  log_dir: "results/logs_improved"
-  save_dir: "models/checkpoints_improved"
+  log_dir: "results/02_improved_logs"
+  save_dir: "models/02_improved_attempt_300x200"
   tensorboard: true
   log_interval: 25
   save_interval: 10

@@ -24,12 +24,12 @@ def debug_model_and_generation():
     print("=== DBM Generation Debug ===\n")
     
     # 1. Load and inspect the model
-    model_path = "models/checkpoints/best_model.pt"
+    model_path = "models/01_initial_model_500x500/best_model.pt"
     
     if not os.path.exists(model_path):
         print(f"❌ Model not found at {model_path}")
         print("Available files:")
-        checkpoint_dir = Path("models/checkpoints")
+        checkpoint_dir = Path("models/01_initial_model_500x500")
         if checkpoint_dir.exists():
             for file in checkpoint_dir.glob("*.pt"):
                 print(f"  - {file}")
@@ -180,9 +180,9 @@ def debug_model_and_generation():
     plt.tight_layout()
     
     # Save the comparison
-    os.makedirs('results/debug', exist_ok=True)
-    plt.savefig('results/debug/generation_comparison.png', dpi=150, bbox_inches='tight')
-    print("✅ Saved comparison to results/debug/generation_comparison.png")
+    os.makedirs('results/01_initial_model_debug', exist_ok=True)
+    plt.savefig('results/01_initial_model_debug/generation_comparison.png', dpi=150, bbox_inches='tight')
+    print("✅ Saved comparison to results/01_initial_model_debug/generation_comparison.png")
     
     # 5. Analyze weight and bias statistics
     print("\n=== Model Weight Analysis ===")

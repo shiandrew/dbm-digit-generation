@@ -59,8 +59,8 @@ data:
 
 # Logging and Monitoring
 logging:
-  log_dir: "results/logs"
-  save_dir: "models/checkpoints"
+  log_dir: "results/01_baseline_logs"
+  save_dir: "models/01_initial_model_500x500"
   tensorboard: true
   log_interval: 50
   save_interval: 10

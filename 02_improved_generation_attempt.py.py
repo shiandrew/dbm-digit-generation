@@ -20,8 +20,8 @@ from src.data.loaders import get_test_dataset
 def improved_generation():
     """Generate samples using improved methods."""
     
-    # Load model
-    model_path = "models/checkpoints/best_model.pt"
+# Load model
+    model_path = "models/02_improved_attempt_300x200/best_model.pt"
     checkpoint = torch.load(model_path, map_location='cpu')
     
     model_config = checkpoint.get('model_config', {})
@@ -156,13 +156,13 @@ def improved_generation():
     plt.tight_layout()
     
     # Save results
-    os.makedirs('results/improved_samples', exist_ok=True)
-    plt.savefig('results/improved_samples/improved_generation.png', dpi=150, bbox_inches='tight')
-    print("✅ Saved improved samples to results/improved_samples/improved_generation.png")
+    os.makedirs('results/02_improved_generation_attempts', exist_ok=True)
+    plt.savefig('results/02_improved_generation_attempts/improved_generation.png', dpi=150, bbox_inches='tight')
+    print("✅ Saved improved samples to results/02_improved_generation_attempts/improved_generation.png")
     
     # Also save the raw tensors
-    torch.save(final_samples, 'results/improved_samples/best_samples.pt')
-    torch.save(refined_samples, 'results/improved_samples/refined_samples.pt')
+    torch.save(final_samples, 'results/02_improved_generation_attempts/best_samples.pt')
+    torch.save(refined_samples, 'results/02_improved_generation_attempts/refined_samples.pt')
     
     # Print statistics
     print(f"\nImproved Sample Statistics:")
