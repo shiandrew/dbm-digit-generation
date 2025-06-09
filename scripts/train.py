@@ -22,7 +22,7 @@ from src.utils.logging_utils import setup_logging
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train DBM model')
-    parser.add_argument('--config', type=str, default='configs/default.yaml',
+    parser.add_argument('--config', type=str, default='configs/01_baseline_config.yaml',
                       help='Path to config file')
     parser.add_argument('--resume', type=str, default=None,
                       help='Path to checkpoint to resume from')
