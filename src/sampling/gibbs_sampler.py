@@ -52,25 +52,41 @@ class GibbsSampler:
                 raise ValueError("Must provide hidden layer to sample visible layer")
             
             # Visible units receive input from first hidden layer
+            # Use weights[0] which connects visible to first hidden
             pre_activation = torch.mm(top_layer, self.model.weights[0].t()) + self.model.biases[0]
             
         else:
-            # Sample hidden layer
-            hidden_idx = layer_idx - 1
-            pre_activation = self.model.biases[layer_idx].clone()
+            # Sample hidden layer (layer_idx >= 1)
+            # Determine which hidden layer this is (0-indexed for hidden layers)
+            hidden_layer_idx = layer_idx - 1  # 0 for first hidden, 1 for second hidden, etc.
+            
+            batch_size = bottom_layer.size(0) if bottom_layer is not None else top_layer.size(0)
+            
+            # Start with bias term for this hidden layer
+            pre_activation = self.model.biases[layer_idx].unsqueeze(0).expand(batch_size, -1)
             
             # Input from bottom layer
             if bottom_layer is not None:
                 if layer_idx == 1:
-                    # First hidden layer receives from visible
-                    pre_activation += torch.mm(bottom_layer, self.model.weights[0])
+                    # First hidden layer receives from visible via weights[0]
+                    pre_activation = pre_activation + torch.mm(bottom_layer, self.model.weights[0])
                 else:
-                    # Higher hidden layers receive from lower hidden
-                    pre_activation += torch.mm(bottom_layer, self.model.weights[hidden_idx - 1])
+                    # Higher hidden layers receive from lower hidden layers
+                    # For layer_idx=2 (hidden2), bottom is hidden1, use weights[1]
+                    # For layer_idx=3 (hidden3), bottom is hidden2, use weights[2]
+                    # Pattern: use weights[layer_idx-1]
+                    weight_idx = layer_idx - 1
+                    pre_activation = pre_activation + torch.mm(bottom_layer, self.model.weights[weight_idx])
             
-            # Input from top layer
-            if top_layer is not None and hidden_idx < len(self.model.weights) - 1:
-                pre_activation += torch.mm(top_layer, self.model.weights[hidden_idx + 1].t())
+            # Input from top layer  
+            if top_layer is not None:
+                # For top-down connections:
+                # When sampling layer_idx=1 (hidden1), top is hidden2, use weights[1].t()
+                # When sampling layer_idx=2 (hidden2), top is hidden3, use weights[2].t()
+                # Pattern: use weights[layer_idx].t() 
+                weight_idx = layer_idx
+                if weight_idx < len(self.model.weights):
+                    pre_activation = pre_activation + torch.mm(top_layer, self.model.weights[weight_idx].t())
         
         # Apply temperature scaling
         if temperature != 1.0:
@@ -166,7 +182,8 @@ class GibbsSampler:
             visible, hiddens = self.gibbs_step(visible, hiddens, temperature)
             
             # Save sample if past burn-in and at sample interval
-            if step >= burn_in and (step - burn_in) % sample_interval == 0:
+            # Use > instead of >= to exclude the burn-in step itself
+            if step > burn_in and (step - burn_in - 1) % sample_interval == 0:
                 samples.append((visible.clone(), [h.clone() for h in hiddens]))
             
             if callback is not None:
