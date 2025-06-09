@@ -110,7 +110,7 @@ class RBM(nn.Module):
         # Reconstruction error
         recon_error = F.mse_loss(visible, neg_visible_probs)
         
-        return pos_grad, neg_grad, recon_error
+        return pos_grad, neg_grad, recon_error.item()
     
     def free_energy(self, visible: torch.Tensor) -> torch.Tensor:
         """
@@ -159,21 +159,25 @@ class RBM(nn.Module):
         # Compute gradients
         pos_grad, neg_grad, recon_error = self.contrastive_divergence(visible)
         
-        # Update weights and biases
+        # Update weights
         self.W.data += self.learning_rate * (pos_grad - neg_grad)
         
-        # Update biases
+        # Update visible bias
         pos_visible_bias_grad = torch.mean(visible, dim=0)
-        neg_visible_bias_grad = torch.mean(neg_grad.t(), dim=0)  # From negative phase
+        # Get negative visible from last step of CD
+        _, neg_hidden_samples = self.sample_hidden(visible)
+        neg_visible_probs, _ = self.sample_visible(neg_hidden_samples)
+        neg_visible_bias_grad = torch.mean(neg_visible_probs, dim=0)
         self.visible_bias.data += self.learning_rate * (pos_visible_bias_grad - neg_visible_bias_grad)
         
+        # Update hidden bias
         pos_hidden_probs, _ = self.sample_hidden(visible)
         pos_hidden_bias_grad = torch.mean(pos_hidden_probs, dim=0)
-        neg_hidden_probs, _ = self.sample_hidden(neg_grad.t())  # From negative phase
+        neg_hidden_probs, _ = self.sample_hidden(neg_visible_probs)
         neg_hidden_bias_grad = torch.mean(neg_hidden_probs, dim=0)
         self.hidden_bias.data += self.learning_rate * (pos_hidden_bias_grad - neg_hidden_bias_grad)
         
-        return recon_error.item()
+        return recon_error
     
     def reconstruct(self, visible: torch.Tensor) -> torch.Tensor:
         """

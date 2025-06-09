@@ -39,21 +39,29 @@ def main():
     logger = logging.getLogger(__name__)
     
     # Setup device
-    device = torch.device(config['hardware']['device'])
+    device_name = config['hardware']['device']
+    if device_name == 'auto':
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    else:
+        device = torch.device(device_name)
     
-    # Create model
+    logger.info(f"Using device: {device}")
+    
+    # Create model with correct parameters
     model = DBM(
         visible_dim=config['model']['visible_dim'],
         hidden_dims=config['model']['hidden_dims'],
-        dropout_rate=config['model']['dropout_rate'],
-        batch_norm=config['model']['batch_norm']
+        learning_rate=config['training']['learning_rate'],
+        use_cuda=(device.type == 'cuda')
     ).to(device)
+    
+    logger.info(f"Created DBM with {len(model.hidden_dims)} hidden layers: {model.hidden_dims}")
     
     # Load dataset
     train_dataset, val_dataset = get_dataset(
         name=config['data']['dataset'],
         train_val_split=config['data']['train_val_split'],
-        normalize=config['data']['normalize']
+        normalize=config['data'].get('normalize', False)
     )
     
     train_loader = DataLoader(
@@ -72,20 +80,12 @@ def main():
         pin_memory=config['hardware']['pin_memory']
     )
     
-    # Setup optimizer
-    optimizer = torch.optim.Adam(
-        model.parameters(),
-        lr=config['training']['learning_rate'],
-        weight_decay=config['training']['weight_decay']
-    )
-    
     # Setup tensorboard
     writer = SummaryWriter(config['logging']['log_dir']) if config['logging']['tensorboard'] else None
     
-    # Create trainer
+    # Create trainer (no optimizer needed as DBM handles its own parameter updates)
     trainer = DBMTrainer(
         model=model,
-        optimizer=optimizer,
         train_loader=train_loader,
         val_loader=val_loader,
         device=device,
@@ -96,15 +96,21 @@ def main():
     # Resume from checkpoint if specified
     if args.resume:
         trainer.load_checkpoint(args.resume)
+        logger.info(f"Resumed from checkpoint: {args.resume}")
     
     # Train model
     try:
+        logger.info("Starting training...")
         trainer.train()
+        logger.info("Training completed successfully!")
     except KeyboardInterrupt:
         logger.info("Training interrupted by user")
+    except Exception as e:
+        logger.error(f"Training failed with error: {e}")
+        raise
     finally:
         if writer:
             writer.close()
 
 if __name__ == '__main__':
-    main() 
+    main()
