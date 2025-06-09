@@ -38,9 +38,11 @@ ENV/
 data/raw/
 data/processed/
 data/external/
+models
 models/checkpoints/
 models/pretrained/
 models/experiments/
+results
 results/figures/
 results/samples/
 results/logs/
