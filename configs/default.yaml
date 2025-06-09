@@ -1,44 +1,100 @@
 # Model Architecture
 model:
-  type: "dbm"  # Options: dbm, conditional_dbm, conv_dbm
+  type: "dbm"  # Deep Boltzmann Machine
   hidden_dims: [500, 500]  # Hidden layer dimensions
   visible_dim: 784  # For MNIST (28x28)
-  dropout_rate: 0.2
-  batch_norm: true
+  use_cuda: true
 
-# Training
+# Training Configuration
 training:
-  batch_size: 128
-  learning_rate: 0.001
-  momentum: 0.9
-  weight_decay: 1e-4
-  epochs: 100
-  early_stopping_patience: 10
-  cd_steps: 1  # Contrastive divergence steps
+  # Basic parameters
+  batch_size: 64
+  learning_rate: 0.01
+  epochs: 200
+  early_stopping_patience: 20
+  
+  # Contrastive Divergence parameters
+  cd_steps: 1  # Number of Gibbs steps for CD-k
+  persistent_cd: false  # Whether to use Persistent CD
+  
+  # Learning rate scheduling
+  lr_schedule:
+    enabled: true
+    type: "step"  # Options: step, exponential, cosine
+    step_size: 50
+    gamma: 0.8
+  
+  # Regularization
+  weight_decay: 1e-5
+  clip_grad_norm: 1.0
 
-# Sampling
+# Pre-training Configuration (for layer-wise training)
+pretraining:
+  enabled: false  # Set to true for better initialization
+  epochs_per_layer: 50
+  learning_rate: 0.01
+  cd_steps: 1
+
+# Sampling Configuration
 sampling:
   num_samples: 100
   num_steps: 1000
   temperature: 1.0
+  burn_in_steps: 100
+  sample_interval: 10
+  
+  # Annealing schedule for sampling
+  annealing:
+    enabled: false
+    temperature_schedule: [10.0, 5.0, 2.0, 1.0, 0.5]
+    steps_per_temp: 100
 
-# Data
+# Data Configuration
 data:
   dataset: "mnist"  # Options: mnist, fashion_mnist
   train_val_split: 0.9
-  normalize: true
+  normalize: false  # Keep false for binary units
+  binarize: true   # Binarize data for Bernoulli units
   augmentation: false
 
-# Logging
+# Logging and Monitoring
 logging:
   log_dir: "results/logs"
   save_dir: "models/checkpoints"
   tensorboard: true
-  log_interval: 100
-  save_interval: 1000
+  log_interval: 50
+  save_interval: 10
+  
+  # What to log
+  log_weights: true
+  log_gradients: true
+  log_samples: true
+  sample_log_interval: 500
 
-# Hardware
+# Evaluation Configuration
+evaluation:
+  # Metrics to compute
+  compute_likelihood: false  # Expensive - set to true for detailed analysis
+  compute_free_energy: true
+  compute_reconstruction_error: true
+  
+  # Sample quality metrics
+  sample_quality:
+    enabled: true
+    num_samples: 1000
+    inception_score: false  # Requires additional setup
+    fid_score: false       # Requires additional setup
+
+# Hardware Configuration
 hardware:
-  device: "cuda"  # Options: cuda, cpu
+  device: "cuda"  # Options: cuda, cpu, auto
   num_workers: 4
-  pin_memory: true 
+  pin_memory: true
+  mixed_precision: false  # AMP training (experimental)
+
+# Experiment Configuration
+experiment:
+  name: "dbm_mnist_baseline"
+  description: "Baseline DBM training on MNIST"
+  tags: ["dbm", "mnist", "generative"]
+  seed: 42

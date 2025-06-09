@@ -1,6 +1,11 @@
 from setuptools import setup, find_packages
 import os
 
+# Read requirements from requirements.txt
+def read_requirements():
+    with open('requirements.txt', 'r') as f:
+        return [line.strip() for line in f if line.strip() and not line.startswith('#')]
+
 # Create necessary directories
 directories = [
     'src',
@@ -48,35 +53,52 @@ init_files = [
 ]
 
 for init_file in init_files:
-    with open(init_file, 'a') as f:
-        pass
+    with open(init_file, 'w') as f:
+        f.write('# This file makes Python treat the directory as a package\n')
 
 setup(
-    name="dbm_digit_generation",
+    name="dbm-digit-generation",
     version="0.1.0",
     packages=find_packages(),
-    install_requires=[
-        'numpy>=1.21.0',
-        'torch>=1.9.0',
-        'torchvision>=0.10.0',
-        'scikit-learn>=0.24.2',
-        'matplotlib>=3.4.3',
-        'seaborn>=0.11.2',
-        'pandas>=1.3.3',
-        'tqdm>=4.62.3',
-        'PyYAML>=5.4.1',
-        'tensorboard>=2.7.0',
-    ],
-    author="Your Name",
-    author_email="your.email@example.com",
+    package_dir={'': '.'},
+    install_requires=read_requirements(),
+    python_requires='>=3.8',
+    
+    # Project metadata
+    author="Andrew Shi",
+    author_email="shian@uci.edu",
     description="A Deep Boltzmann Machine implementation for digit generation",
-    long_description=open('README.md').read(),
+    long_description=open('README.md').read() if os.path.exists('README.md') else '',
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/dbm-digit-generation",
+    url="https://github.com/shiandrew/dbm-digit-generation",
+    
+    # Classifiers
     classifiers=[
-        "Programming Language :: Python :: 3",
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
+        "Topic :: Scientific/Engineering :: Image Recognition",
     ],
-    python_requires='>=3.8',
-) 
+    
+    # Entry points for command line scripts
+    entry_points={
+        'console_scripts': [
+            'dbm-train=scripts.train:main',
+            'dbm-generate=scripts.generate:main',
+            'dbm-evaluate=scripts.evaluate:main',
+        ],
+    },
+    
+    # Include additional files
+    include_package_data=True,
+    package_data={
+        '': ['*.yml', '*.yaml', '*.txt', '*.md'],
+    },
+)

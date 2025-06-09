@@ -1,108 +1,176 @@
 from typing import Callable, List, Optional, Tuple, Union
-
 import torch
+import numpy as np
 
-from src.models.dbm import DBM
 
 class GibbsSampler:
     """
     Gibbs sampler for Deep Boltzmann Machine.
     
+    Performs block Gibbs sampling where we alternately sample all units
+    in each layer conditioned on the neighboring layers.
+    
     Args:
-        model (DBM): DBM model to sample from
+        model: DBM model to sample from
         device (torch.device, optional): Device to use for sampling
     """
     
     def __init__(
         self,
-        model: DBM,
+        model,  # DBM model
         device: Optional[torch.device] = None
     ):
         self.model = model
         self.device = device or torch.device('cpu')
         self.model.to(self.device)
     
-    def sample_visible(self, h: torch.Tensor) -> torch.Tensor:
-        """
-        Sample visible units given hidden units.
-        
-        Args:
-            h (torch.Tensor): Hidden units of shape (batch_size, hidden_dim)
-            
-        Returns:
-            torch.Tensor: Sampled visible units
-        """
-        return self.model.sample_visible(h)
-    
-    def sample_hidden(self, v: torch.Tensor) -> torch.Tensor:
-        """
-        Sample hidden units given visible units.
-        
-        Args:
-            v (torch.Tensor): Visible units of shape (batch_size, visible_dim)
-            
-        Returns:
-            torch.Tensor: Sampled hidden units
-        """
-        return self.model.sample_hidden(v)
-    
-    def gibbs_step(
-        self,
-        v: torch.Tensor,
-        h: torch.Tensor,
+    def sample_layer(
+        self, 
+        layer_idx: int,
+        bottom_layer: Optional[torch.Tensor] = None,
+        top_layer: Optional[torch.Tensor] = None,
         temperature: float = 1.0
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """
-        Perform one Gibbs sampling step.
+        Sample a specific layer given its neighboring layers.
         
         Args:
-            v (torch.Tensor): Current visible units
-            h (torch.Tensor): Current hidden units
+            layer_idx (int): Index of layer to sample (0 = visible, 1+ = hidden)
+            bottom_layer (torch.Tensor, optional): Layer below (if any)
+            top_layer (torch.Tensor, optional): Layer above (if any)
             temperature (float): Sampling temperature
             
         Returns:
-            tuple: (new visible units, new hidden units)
+            tuple: (probabilities, samples)
         """
-        # Sample hidden units
-        h_new = self.sample_hidden(v)
-        if temperature != 1.0:
-            h_new = h_new / temperature
+        if layer_idx == 0:
+            # Sample visible layer
+            if bottom_layer is not None:
+                raise ValueError("Visible layer has no bottom layer")
+            
+            if top_layer is None:
+                raise ValueError("Must provide hidden layer to sample visible layer")
+            
+            # Visible units receive input from first hidden layer
+            pre_activation = torch.mm(top_layer, self.model.weights[0].t()) + self.model.biases[0]
+            
+        else:
+            # Sample hidden layer
+            hidden_idx = layer_idx - 1
+            pre_activation = self.model.biases[layer_idx].clone()
+            
+            # Input from bottom layer
+            if bottom_layer is not None:
+                if layer_idx == 1:
+                    # First hidden layer receives from visible
+                    pre_activation += torch.mm(bottom_layer, self.model.weights[0])
+                else:
+                    # Higher hidden layers receive from lower hidden
+                    pre_activation += torch.mm(bottom_layer, self.model.weights[hidden_idx - 1])
+            
+            # Input from top layer
+            if top_layer is not None and hidden_idx < len(self.model.weights) - 1:
+                pre_activation += torch.mm(top_layer, self.model.weights[hidden_idx + 1].t())
         
-        # Sample visible units
-        v_new = self.sample_visible(h_new)
+        # Apply temperature scaling
         if temperature != 1.0:
-            v_new = v_new / temperature
+            pre_activation = pre_activation / temperature
         
-        return v_new, h_new
+        # Compute probabilities and sample
+        probs = torch.sigmoid(pre_activation)
+        samples = torch.bernoulli(probs)
+        
+        return probs, samples
+    
+    def gibbs_step(
+        self,
+        visible: torch.Tensor,
+        hiddens: List[torch.Tensor],
+        temperature: float = 1.0,
+        sample_visible: bool = True
+    ) -> Tuple[torch.Tensor, List[torch.Tensor]]:
+        """
+        Perform one complete Gibbs sampling step.
+        
+        Args:
+            visible (torch.Tensor): Current visible units
+            hiddens (List[torch.Tensor]): Current hidden units
+            temperature (float): Sampling temperature
+            sample_visible (bool): Whether to sample visible units
+            
+        Returns:
+            tuple: (new_visible, new_hiddens)
+        """
+        new_hiddens = []
+        
+        # Sample hidden layers from bottom to top
+        for i in range(len(hiddens)):
+            bottom_layer = visible if i == 0 else new_hiddens[i - 1]
+            top_layer = hiddens[i + 1] if i + 1 < len(hiddens) else None
+            
+            _, hidden_samples = self.sample_layer(
+                layer_idx=i + 1,  # +1 because layer 0 is visible
+                bottom_layer=bottom_layer,
+                top_layer=top_layer,
+                temperature=temperature
+            )
+            new_hiddens.append(hidden_samples)
+        
+        # Sample visible layer if requested
+        if sample_visible:
+            _, visible_samples = self.sample_layer(
+                layer_idx=0,
+                top_layer=new_hiddens[0],
+                temperature=temperature
+            )
+            new_visible = visible_samples
+        else:
+            new_visible = visible
+        
+        return new_visible, new_hiddens
     
     def gibbs_chain(
         self,
-        v: torch.Tensor,
-        n_steps: int = 1,
+        initial_visible: torch.Tensor,
+        n_steps: int = 1000,
         temperature: float = 1.0,
-        callback: Optional[Callable[[int, torch.Tensor, torch.Tensor], None]] = None
-    ) -> List[torch.Tensor]:
+        burn_in: int = 100,
+        sample_interval: int = 10,
+        callback: Optional[Callable[[int, torch.Tensor, List[torch.Tensor]], None]] = None
+    ) -> List[Tuple[torch.Tensor, List[torch.Tensor]]]:
         """
-        Run a chain of Gibbs sampling steps.
+        Run a Gibbs sampling chain.
         
         Args:
-            v (torch.Tensor): Initial visible units
-            n_steps (int): Number of Gibbs steps
+            initial_visible (torch.Tensor): Initial visible state
+            n_steps (int): Total number of Gibbs steps
             temperature (float): Sampling temperature
-            callback (callable, optional): Callback function called after each step
+            burn_in (int): Number of burn-in steps to discard
+            sample_interval (int): Interval between saved samples
+            callback (callable, optional): Callback called after each step
             
         Returns:
-            list: List of visible unit samples
+            list: List of (visible, hiddens) tuples
         """
-        samples = [v]
-        h = self.sample_hidden(v)
+        batch_size = initial_visible.size(0)
+        
+        # Initialize hidden layers
+        hiddens = []
+        for hidden_dim in self.model.hidden_dims:
+            hiddens.append(torch.rand(batch_size, hidden_dim, device=self.device))
+        
+        visible = initial_visible.clone()
+        samples = []
         
         for step in range(n_steps):
-            v, h = self.gibbs_step(v, h, temperature)
-            samples.append(v)
+            visible, hiddens = self.gibbs_step(visible, hiddens, temperature)
+            
+            # Save sample if past burn-in and at sample interval
+            if step >= burn_in and (step - burn_in) % sample_interval == 0:
+                samples.append((visible.clone(), [h.clone() for h in hiddens]))
             
             if callback is not None:
-                callback(step, v, h)
+                callback(step, visible, hiddens)
         
         return samples
     
@@ -111,32 +179,160 @@ class GibbsSampler:
         batch_size: int,
         n_steps: int = 1000,
         temperature: float = 1.0,
-        initial_state: Optional[torch.Tensor] = None,
-        callback: Optional[Callable[[int, torch.Tensor, torch.Tensor], None]] = None
-    ) -> torch.Tensor:
+        initial_visible: Optional[torch.Tensor] = None,
+        return_chain: bool = False,
+        callback: Optional[Callable[[int, torch.Tensor, List[torch.Tensor]], None]] = None
+    ) -> Union[torch.Tensor, List[torch.Tensor]]:
         """
-        Sample from the model using Gibbs sampling.
+        Generate samples from the model using Gibbs sampling.
         
         Args:
             batch_size (int): Number of samples to generate
             n_steps (int): Number of Gibbs steps
             temperature (float): Sampling temperature
-            initial_state (torch.Tensor, optional): Initial visible units
-            callback (callable, optional): Callback function called after each step
+            initial_visible (torch.Tensor, optional): Initial visible state
+            return_chain (bool): Whether to return the entire chain
+            callback (callable, optional): Callback called after each step
             
         Returns:
-            torch.Tensor: Generated samples
+            torch.Tensor or list: Generated samples or sampling chain
         """
-        if initial_state is None:
-            v = torch.randn(batch_size, self.model.visible_dim, device=self.device)
+        if initial_visible is None:
+            # Initialize with random visible units (0.5 probability for binary units)
+            initial_visible = torch.bernoulli(
+                torch.ones(batch_size, self.model.visible_dim, device=self.device) * 0.5
+            )
         else:
-            v = initial_state.to(self.device)
+            initial_visible = initial_visible.to(self.device)
         
-        samples = self.gibbs_chain(
-            v,
-            n_steps=n_steps,
-            temperature=temperature,
-            callback=callback
+        if return_chain:
+            samples = self.gibbs_chain(
+                initial_visible,
+                n_steps=n_steps,
+                temperature=temperature,
+                callback=callback
+            )
+            return [sample[0] for sample in samples]  # Return only visible states
+        else:
+            samples = self.gibbs_chain(
+                initial_visible,
+                n_steps=n_steps,
+                temperature=temperature,
+                burn_in=n_steps - 1,  # Only keep final sample
+                sample_interval=1,
+                callback=callback
+            )
+            return samples[-1][0] if samples else initial_visible
+    
+    def compute_likelihood(
+        self,
+        visible: torch.Tensor,
+        n_samples: int = 100,
+        n_steps: int = 1000
+    ) -> torch.Tensor:
+        """
+        Estimate log-likelihood using importance sampling.
+        
+        Args:
+            visible (torch.Tensor): Visible data
+            n_samples (int): Number of importance samples
+            n_steps (int): Number of Gibbs steps per sample
+            
+        Returns:
+            torch.Tensor: Estimated log-likelihood
+        """
+        batch_size = visible.size(0)
+        
+        # Generate samples for partition function estimation
+        importance_samples = []
+        for _ in range(n_samples):
+            sample = self.sample_from_model(
+                batch_size=1,
+                n_steps=n_steps
+            )
+            importance_samples.append(sample)
+        
+        importance_samples = torch.cat(importance_samples, dim=0)
+        
+        # Compute free energies
+        data_free_energy = self.model.free_energy(visible)
+        sample_free_energies = self.model.free_energy(importance_samples)
+        
+        # Estimate log partition function
+        log_z_estimate = -torch.logsumexp(-sample_free_energies, dim=0) + torch.log(torch.tensor(n_samples, dtype=torch.float))
+        
+        # Compute log-likelihood
+        log_likelihood = -data_free_energy - log_z_estimate
+        
+        return log_likelihood
+    
+    def anneal_sampling(
+        self,
+        initial_visible: torch.Tensor,
+        temperature_schedule: List[float],
+        steps_per_temp: int = 100
+    ) -> torch.Tensor:
+        """
+        Perform simulated annealing for better sampling.
+        
+        Args:
+            initial_visible (torch.Tensor): Initial visible state
+            temperature_schedule (list): List of temperatures (high to low)
+            steps_per_temp (int): Number of steps at each temperature
+            
+        Returns:
+            torch.Tensor: Final sample after annealing
+        """
+        visible = initial_visible.clone()
+        batch_size = visible.size(0)
+        
+        # Initialize hidden layers
+        hiddens = []
+        for hidden_dim in self.model.hidden_dims:
+            hiddens.append(torch.rand(batch_size, hidden_dim, device=self.device))
+        
+        for temperature in temperature_schedule:
+            for _ in range(steps_per_temp):
+                visible, hiddens = self.gibbs_step(visible, hiddens, temperature)
+        
+        return visible
+    
+    def persistent_chain_sampling(
+        self,
+        batch_size: int,
+        n_samples: int,
+        steps_between_samples: int = 100,
+        temperature: float = 1.0
+    ) -> List[torch.Tensor]:
+        """
+        Use persistent contrastive divergence approach for sampling.
+        
+        Args:
+            batch_size (int): Batch size for persistent chains
+            n_samples (int): Number of samples to collect
+            steps_between_samples (int): Gibbs steps between collected samples
+            temperature (float): Sampling temperature
+            
+        Returns:
+            list: List of samples
+        """
+        # Initialize persistent chains
+        visible = torch.bernoulli(
+            torch.ones(batch_size, self.model.visible_dim, device=self.device) * 0.5
         )
         
-        return samples[-1]  # Return final sample 
+        hiddens = []
+        for hidden_dim in self.model.hidden_dims:
+            hiddens.append(torch.rand(batch_size, hidden_dim, device=self.device))
+        
+        samples = []
+        
+        for sample_idx in range(n_samples):
+            # Run chain for specified steps
+            for _ in range(steps_between_samples):
+                visible, hiddens = self.gibbs_step(visible, hiddens, temperature)
+            
+            # Collect sample
+            samples.append(visible.clone())
+        
+        return samples
