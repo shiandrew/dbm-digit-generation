@@ -10,8 +10,9 @@ training:
   # Basic parameters
   batch_size: 64
   learning_rate: 0.01
-  epochs: 200
-  early_stopping_patience: 20
+  epochs: 300
+  early_stopping_patience: 30
+
   
   # Contrastive Divergence parameters
   cd_steps: 1  # Number of Gibbs steps for CD-k
@@ -21,7 +22,7 @@ training:
   lr_schedule:
     enabled: true
     type: "step"  # Options: step, exponential, cosine
-    step_size: 50
+    step_size: 70
     gamma: 0.8
   
   # Regularization
@@ -30,7 +31,7 @@ training:
 
 # Pre-training Configuration (for layer-wise training)
 pretraining:
-  enabled: false  # Set to true for better initialization
+  enabled: true  # Set to true for better initialization
   epochs_per_layer: 50
   learning_rate: 0.01
   cd_steps: 1
@@ -45,7 +46,7 @@ sampling:
   
   # Annealing schedule for sampling
   annealing:
-    enabled: false
+    enabled: true
     temperature_schedule: [10.0, 5.0, 2.0, 1.0, 0.5]
     steps_per_temp: 100
 
@@ -62,14 +63,14 @@ logging:
   log_dir: "results/01_baseline_logs"
   save_dir: "models/01_initial_model_500x500"
   tensorboard: true
-  log_interval: 50
-  save_interval: 10
+  log_interval: 100
+  save_interval: 20
   
   # What to log
   log_weights: true
   log_gradients: true
   log_samples: true
-  sample_log_interval: 500
+  sample_log_interval: 1000
 
 # Evaluation Configuration
 evaluation:

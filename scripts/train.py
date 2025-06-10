@@ -41,9 +41,22 @@ def main():
     # Setup device
     device_name = config['hardware']['device']
     if device_name == 'auto':
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        try:
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu') 
+            _ = torch.tensor([0.0]).to(device)
+        # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        except (AssertionError, RuntimeError):
+            print("⚠️ CUDA not available. Falling back to CPU.")
+            device = torch.device('cpu')
+      
     else:
-        device = torch.device(device_name)
+        try:
+            device = torch.device(device_name) 
+            _ = torch.tensor([0.0]).to(device)
+        except (AssertionError, RuntimeError):
+            print(f"⚠️ Cannot use '{device_name}'. Falling back to CPU.")
+            device = torch.device('cpu')
+
     
     logger.info(f"Using device: {device}")
     
