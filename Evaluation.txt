@@ -1,0 +1,65 @@
+==================================================
+01_baseline_config
+EVALUATION RESULTS
+==================================================
+Average Reconstruction Error: 0.037279
+Average Free Energy: -2872.874737
+
+Model Information:
+  Visible dimensions: 784
+  Hidden dimensions: [500, 500]
+  Total parameters: 643784
+  Trainable parameters: 643784
+
+Weight Statistics:
+  Weight 0: shape=torch.Size([784, 500]), mean=-0.028471, std=0.152241
+  Weight 1: shape=torch.Size([500, 500]), mean=0.000567, std=0.029081
+
+Bias Statistics:
+  visible bias: shape=torch.Size([784]), mean=-0.029597, std=0.040084
+  hidden_0 bias: shape=torch.Size([500]), mean=-0.000423, std=0.026100
+  hidden_1 bias: shape=torch.Size([500]), mean=0.001440, std=0.026952
+
+==================================================
+02_improved_architecture
+EVALUATION RESULTS
+==================================================
+Average Reconstruction Error: 0.025948
+Average Free Energy: -974.902116
+
+Model Information:
+  Visible dimensions: 784
+  Hidden dimensions: [300, 200]
+  Total parameters: 296484
+  Trainable parameters: 296484
+
+Weight Statistics:
+  Weight 0: shape=torch.Size([784, 300]), mean=-0.032694, std=0.135685
+  Weight 1: shape=torch.Size([300, 200]), mean=0.004639, std=0.037962
+
+Bias Statistics:
+  visible bias: shape=torch.Size([784]), mean=-0.038797, std=0.035339
+  hidden_0 bias: shape=torch.Size([300]), mean=0.007804, std=0.037106
+  hidden_1 bias: shape=torch.Size([200]), mean=0.003750, std=0.038189
+
+==================================================
+03_memory_optimized_final
+EVALUATION RESULTS
+==================================================
+Average Reconstruction Error: 0.017255
+Average Free Energy: -783.714472
+
+Model Information:
+  Visible dimensions: 784
+  Hidden dimensions: [256, 128]
+  Total parameters: 234640
+  Trainable parameters: 234640
+
+Weight Statistics:
+  Weight 0: shape=torch.Size([784, 256]), mean=-0.058157, std=0.303546
+  Weight 1: shape=torch.Size([256, 128]), mean=-0.009011, std=0.080016
+
+Bias Statistics:
+  visible bias: shape=torch.Size([784]), mean=-0.150456, std=0.395269
+  hidden_0 bias: shape=torch.Size([256]), mean=-0.165422, std=0.104081
+  hidden_1 bias: shape=torch.Size([128]), mean=0.227346, std=0.258833
